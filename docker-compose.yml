@@ -1,0 +1,13 @@
+version: '3'
+services:
+  db:
+    image: postgres:13
+    container_name: nba_postgres
+    environment:
+      POSTGRES_USER: nbauser
+      POSTGRES_PASSWORD: nbapass
+      POSTGRES_DB: nba_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql

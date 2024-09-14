@@ -1,0 +1,4 @@
+nba_api
+dataset
+psycopg2-binary
+docker
