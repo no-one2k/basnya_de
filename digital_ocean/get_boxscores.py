@@ -1,6 +1,8 @@
 import dataset
 from nba_api.stats.endpoints import BoxScoreTraditionalV2
 
+from digital_ocean.helper import log_api_call, upsert_all_data_sets
+
 # Database connection using dataset
 db = dataset.connect("postgresql://nbauser:nbapass@localhost:5432/nba_db")
 games_table = db["games"]
@@ -14,24 +16,18 @@ def get_unfetched_boxscores():
 
         # Check if boxscore is already fetched
         if not boxscores_table.find_one(game_id=game_id):
-            boxscore = BoxScoreTraditionalV2(game_id=game_id).get_dict()["resultSets"][0]["rowSet"][0]
-            points_home = boxscore[22]  # Home points
-            points_away = boxscore[23]  # Away points
-            rebounds_home = boxscore[18]
-            rebounds_away = boxscore[19]
-            assists_home = boxscore[20]
-            assists_away = boxscore[21]
+            try:
+                # Fetch boxscore data
+                boxscore = BoxScoreTraditionalV2(game_id=game_id)
+                upsert_all_data_sets(db, boxscore)
 
-            # Upsert into the database
-            boxscores_table.upsert({
-                "game_id": game_id,
-                "points_home": points_home,
-                "points_away": points_away,
-                "rebounds_home": rebounds_home,
-                "rebounds_away": rebounds_away,
-                "assists_home": assists_home,
-                "assists_away": assists_away
-            }, ["game_id"])
+                log_api_call(db,"BoxScoreTraditionalV2", True)
+
+            except Exception as e:
+                # Log the failed API call with the error message
+                log_api_call(db,"BoxScoreTraditionalV2", False, str(e))
+                print(f"Error fetching boxscore for game {game_id}: {e}")
+
 
 if __name__ == "__main__":
     get_unfetched_boxscores()

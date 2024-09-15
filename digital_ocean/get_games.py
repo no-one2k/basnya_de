@@ -1,31 +1,25 @@
 import dataset
+from dataset import Database, Table
 from nba_api.stats.endpoints import LeagueGameFinder
 from datetime import datetime
 
+from digital_ocean.helper import log_api_call, make_raw_data_table_name, upsert_all_data_sets
+
 # Database connection using dataset
-db = dataset.connect("postgresql://nbauser:nbapass@localhost:5432/nba_db")
-games_table = db["games"]
+db: Database = dataset.connect("postgresql://nbauser:nbapass@localhost:5432/nba_db")
+
 
 def get_games(start_date, end_date):
-    # Fetch NBA games for the specified date range
-    gamefinder = LeagueGameFinder(date_from_nullable=start_date, date_to_nullable=end_date)
-    games = gamefinder.get_dict()["resultSets"][0]["rowSet"]
+    try:
+        # Fetch NBA games for the specified date range
+        gamefinder = LeagueGameFinder(date_from_nullable=start_date, date_to_nullable=end_date)
+        upsert_all_data_sets(db, gamefinder)
 
-    for game in games:
-        game_id = game[2]
-        home_team = game[6]
-        away_team = game[7]
-        date = game[0]
-        status = game[8]
-
-        # Upsert into the database (insert if not exists, otherwise update)
-        games_table.upsert({
-            "game_id": game_id,
-            "home_team": home_team,
-            "away_team": away_team,
-            "date": date,
-            "status": status
-        }, ["game_id"])
+        log_api_call(db,"LeagueGameFinder", True)
+    except Exception as e:
+        # Log the failed API call with the error message
+        log_api_call(db, "LeagueGameFinder", False, str(e))
+        print(f"Error fetching games: {e}")
 
 if __name__ == "__main__":
     # Example date range
