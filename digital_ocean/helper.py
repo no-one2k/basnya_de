@@ -6,11 +6,11 @@ from nba_api.stats.endpoints._base import Endpoint
 
 KEY_SUSPECTS = ["SEASON_ID", "TEAM_ID", "GAME_ID", "PLAYER_ID"]
 
-def log_api_call(db: Database, endpoint: Endpoint, success: bool, error_message: str = None):
+def log_api_call(db: Database, endpoint_name: str, success: bool, error_message: str = None):
     """Logs an API call to the database."""
     api_call_logs_table = db["api_call_logs"]
     api_call_logs_table.insert({
-        "endpoint": endpoint,
+        "endpoint": endpoint_name,
         "call_time": datetime.utcnow(),
         "success": success,
         "error_message": error_message

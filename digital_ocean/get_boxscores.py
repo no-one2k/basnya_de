@@ -1,18 +1,18 @@
 import dataset
 from nba_api.stats.endpoints import BoxScoreTraditionalV2
 
-from digital_ocean.helper import log_api_call, upsert_all_data_sets
+from helper import log_api_call, upsert_all_data_sets
 
 # Database connection using dataset
 db = dataset.connect("postgresql://nbauser:nbapass@localhost:5432/nba_db")
-games_table = db["games"]
-boxscores_table = db["boxscores"]
+games_table = db["leaguegamefinder__leaguegamefinderresults"]
+boxscores_table = db["boxscoretraditionalv2__teamstats"]
 
 def get_unfetched_boxscores():
-    games = games_table.find(status="Final")  # Assuming "Final" means the game has concluded
+    games = games_table.find()#status="Final")  # Assuming "Final" means the game has concluded
 
     for game in games:
-        game_id = game["game_id"]
+        game_id = game["GAME_ID"]
 
         # Check if boxscore is already fetched
         if not boxscores_table.find_one(game_id=game_id):
