@@ -1,4 +1,4 @@
-.PHONY: init_db start stop test_games test_boxscores
+.PHONY: init_db start stop test_games test_boxscores test_bs_summaries
 
 init_db:
 	docker-compose up -d db
@@ -16,3 +16,6 @@ test_games:
 
 test_boxscores:
 	python3 digital_ocean/get_boxscores.py
+
+test_bs_summaries:
+	python3 digital_ocean/get_bs_summaries.py
