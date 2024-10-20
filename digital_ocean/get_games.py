@@ -1,26 +1,40 @@
-import dataset
+import logging
+from typing import Optional, Dict
+
 from dataset import Database
-from nba_api.stats.endpoints.leaguegamefinder import LeagueGameFinder
+from nba_api.stats.endpoints.leaguegamefinder import LeagueGameFinder, LeagueIDNullable
 
-from helper import log_api_call, upsert_all_data_sets
+from helper import log_api_call, upsert_all_data_sets, db_connection
 
-# Database connection using dataset
-db: Database = dataset.connect("postgresql://nbauser:nbapass@localhost:5432/nba_db")
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
-def get_games(start_date, end_date):
-    game_finder = LeagueGameFinder(date_from_nullable=start_date, date_to_nullable=end_date)
+def fetch_nba_games(db: Database, start_date: str, end_date: str) -> Optional[Dict]:
+    """Fetch NBA games for the specified date range."""
     try:
-        # Fetch NBA games for the specified date range
-        game_finder = LeagueGameFinder(date_from_nullable=start_date, date_to_nullable=end_date)
+        game_finder = LeagueGameFinder(
+            league_id_nullable=LeagueIDNullable.nba,
+            date_from_nullable=start_date,
+            date_to_nullable=end_date,
+        )
         upsert_all_data_sets(db, game_finder)
-
-        log_api_call(db,"LeagueGameFinder", True)
+        log_api_call(db, "LeagueGameFinder", True)
+        return game_finder.get_normalized_dict()
     except Exception as e:
-        # Log the failed API call with the error message
+        logger.exception(f"Error fetching games: {e}")
         log_api_call(db, "LeagueGameFinder", False, str(e))
-        print(f"Error fetching games: {e}")
+        return None
+
+
+def get_games(start_date: str, end_date: str) -> None:
+    """Main function to fetch and store NBA games."""
+    with db_connection() as db:
+        if games := fetch_nba_games(db, start_date, end_date):
+            logger.info(f"Successfully fetched games from {start_date} to {end_date}: {len(games)}")
+        else:
+            logger.error(f"Failed to fetch games from {start_date} to {end_date}")
+
 
 if __name__ == "__main__":
-    # Example date range
-    get_games("01/10/2024", "01/11/2024")
+    get_games("03/01/2021", "03/02/2021")

@@ -3,3 +3,4 @@ docker==7.1.0
 nba_api==1.5.2
 numpy==1.26.4
 psycopg2-binary==2.9.9
+sshtunnel==0.4.0
