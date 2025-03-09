@@ -1,10 +1,15 @@
 import logging
+import sys
 from typing import List
 from nba_api.stats.endpoints.boxscoretraditionalv2 import BoxScoreTraditionalV2
 
 from helper import log_api_call, upsert_all_data_sets, db_connection, get_distinct_game_ids
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
 logger = logging.getLogger(__name__)
 
 MAX_BOXSCORES_PER_RUN = 5

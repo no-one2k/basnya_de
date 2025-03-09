@@ -1,4 +1,5 @@
 import logging
+import sys
 from typing import Optional, Dict
 
 from dataset import Database
@@ -6,7 +7,11 @@ from nba_api.stats.endpoints.leaguegamefinder import LeagueGameFinder, LeagueIDN
 
 from helper import log_api_call, upsert_all_data_sets, db_connection
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
 logger = logging.getLogger(__name__)
 
 
@@ -37,4 +42,4 @@ def get_games(start_date: str, end_date: str) -> None:
 
 
 if __name__ == "__main__":
-    get_games("03/01/2021", "03/02/2021")
+    get_games("02/03/2025", "02/05/2025")

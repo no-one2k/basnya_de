@@ -1,5 +1,6 @@
 import logging
-from datetime import datetime
+import os
+from datetime import datetime, date
 from datetime import timezone
 from typing import Set
 
@@ -7,8 +8,8 @@ import dataset
 from dataset import Database, Table
 from contextlib import contextmanager
 from nba_api.stats.endpoints._base import Endpoint
-from sshtunnel import SSHTunnelForwarder
-
+from prefect.variables import Variable
+from pygments.lexer import default
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -16,10 +17,15 @@ logger = logging.getLogger(__name__)
 
 KEY_SUSPECTS = ["SEASON_ID", "TEAM_ID", "GAME_ID", "PLAYER_ID"]
 
+db_config_source = Variable.get("db_connection", default=os.environ)
 
 # Configuration
 DB_CONFIG = {
-
+    "username": db_config_source.get("DB_USER"),
+    "password": db_config_source.get("DB_PASSWORD"),
+    "host": db_config_source.get("DB_HOST"),
+    "port": db_config_source.get("DB_PORT"),
+    "database": db_config_source.get("DB_NAME"),
 }
 
 
@@ -31,20 +37,21 @@ SSH_CONFIG = {
 def db_connection() -> Database:
     """Context manager for database connection via SSH tunnel."""
     if SSH_CONFIG:
+        from sshtunnel import SSHTunnelForwarder
         with SSHTunnelForwarder(
                 (SSH_CONFIG['host'], SSH_CONFIG['port']),
                 ssh_username=SSH_CONFIG['user'],
                 ssh_password=SSH_CONFIG['password'],
-                remote_bind_address=(DB_CONFIG['hostname'], DB_CONFIG['port'])
+                remote_bind_address=(DB_CONFIG['host'], DB_CONFIG['port'])
         ) as tunnel:
-            db_url = f"postgresql://{DB_CONFIG['username']}:{DB_CONFIG['password']}@{DB_CONFIG['hostname']}:{tunnel.local_bind_port}/{DB_CONFIG['database']}"
+            db_url = f"postgresql://{DB_CONFIG['username']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}:{tunnel.local_bind_port}/{DB_CONFIG['database']}"
             db = dataset.connect(db_url)
             try:
                 yield db
             finally:
                 db.close()
     else:
-        db_url = f"postgresql://{DB_CONFIG['username']}:{DB_CONFIG['password']}@{DB_CONFIG['hostname']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}"
+        db_url = f"postgresql://{DB_CONFIG['username']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}"
         db = dataset.connect(db_url)
         try:
             yield db
@@ -90,3 +97,19 @@ def get_distinct_game_ids(db, table_name: str) -> Set[str]:
     except Exception as e:
         logger.exception(f"Table '{table_name}' not found or error accessing it: {e}")
         return set()
+
+def convert_to_datetime(date_val) -> datetime | None:
+    """Converts various date formats to datetime object."""
+    if isinstance(date_val, str):
+        try:
+            return datetime.strptime(date_val, "%Y-%m-%d")
+        except Exception as e:
+            logger.error(f"Invalid date format for {date_val}: {e}")
+            return None
+    elif isinstance(date_val, datetime):
+        return date_val
+    elif isinstance(date_val, date):
+        return datetime.combine(date_val, datetime.min.time())
+    else:
+        logger.error(f"Unexpected type for date {date_val}")
+        return None
