@@ -37,6 +37,7 @@ deploy_track_dates:
 	/bin/bash -c 'set -a; source .venv/bin/activate; set +a; python3 prefect/deploy.py'
 
 config_git:
+	eval `ssh-agent -s`
 	git config --global user.name "no-one2k"
 	git config --global user.email no-one2k@yandex.ru
 
