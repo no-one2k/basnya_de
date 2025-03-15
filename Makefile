@@ -38,11 +38,12 @@ deploy_track_dates:
 
 config_git:
 	eval `ssh-agent -s`
+	ssh-add ../.ssh/id_ed25519_github_droplet
 	git config --global user.name "no-one2k"
 	git config --global user.email no-one2k@yandex.ru
 
-activate_env:
-	source .venv/bin/activate
+venv:
+	source /root/basnya_de/.venv/bin/activate
 
 create_work_pool:
 	prefect work-pool create $(WORK_POOL) --type prefect:managed
