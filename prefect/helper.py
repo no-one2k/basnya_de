@@ -17,9 +17,6 @@ logger = logging.getLogger(__name__)
 
 KEY_SUSPECTS = ["SEASON_ID", "TEAM_ID", "GAME_ID", "PLAYER_ID"]
 
-db_config_source = Variable.get("db_connection", default=os.environ)
-
-# Configuration
 
 
 
@@ -29,6 +26,7 @@ SSH_CONFIG = {
 
 @contextmanager
 def db_connection() -> Database:
+    db_config_source = Variable.get("db_connection", default=os.environ)
     DB_CONFIG = {
         "username": db_config_source.get("DB_USER"),
         "password": db_config_source.get("DB_PASSWORD"),
@@ -36,6 +34,7 @@ def db_connection() -> Database:
         "port": db_config_source.get("DB_PORT"),
         "database": db_config_source.get("DB_NAME"),
     }
+    print(DB_CONFIG)
     """Context manager for database connection via SSH tunnel."""
     if SSH_CONFIG:
         from sshtunnel import SSHTunnelForwarder

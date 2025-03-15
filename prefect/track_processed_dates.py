@@ -134,6 +134,7 @@ def track_dates(last_n_days: int = 3):
       - Retrieves all dates marked as 'pending'.
       - Processes each pending date sequentially.
     """
+    print(f"track_dates: {last_n_days}")
     start_date = datetime.today() - timedelta(days=last_n_days)
     end_date = datetime.today()
 

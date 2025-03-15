@@ -48,4 +48,8 @@ venv:
 create_work_pool:
 	prefect work-pool create $(WORK_POOL) --type prefect:managed
 
+kill_vs:
+	ps aux | grep .cursor-server | awk '{print $2}' | xargs kill
+	ps aux | grep .vscode-server | awk '{print $2}' | xargs kill
+
 
