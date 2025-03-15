@@ -4,16 +4,14 @@ name: basnya-deployment
 pull:
 - prefect.deployments.steps.run_shell_script:
     id: activate-venv
-    script: activate_env.sh    # On Windows, use: myenv\Scripts\Activate.ps1
+    script: bash /root/basnya_de/activate_env.sh 
     stream_output: true
 deployments:
   # base metadata
 - name: track-dates-deployment
   version:
   tags: []
-  description: "Main function"
-  schedule:
-    cron: 25 8 * * *
+  description: Main function
   entrypoint: prefect/track_processed_dates.py:track_dates
   parameters:
     last_n_days: 3
@@ -23,7 +21,7 @@ deployments:
     job_variables: {}
   concurrency_limit:
   schedules:
-remo  - cron: 25 8 * * *
+  - cron: 25 8 * * *
     timezone:
     day_or: true
     active: true
