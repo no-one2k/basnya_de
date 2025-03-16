@@ -34,10 +34,12 @@ init_droplet:
 	pip install -r requirements.txt
 
 deploy_track_dates:
-	/bin/bash -c 'set -a; source .venv/bin/activate; set +a; python3 prefect/track_processed_dates.py'
+	/bin/bash -c 'set -a; source .venv/bin/activate; set +a; nohup python3 prefect/track_processed_dates.py > track_dates.log 2>&1 &'
+	@echo "Started track_processed_dates.py in background. Check track_dates.log for output."
 
 deploy_fill_pending:
-	/bin/bash -c 'set -a; source .venv/bin/activate; set +a; python3 prefect/fill_pending.py'
+	/bin/bash -c 'set -a; source .venv/bin/activate; set +a; nohup python3 prefect/fill_pending.py > fill_pending.log 2>&1 &'
+	@echo "Started fill_pending.py in background. Check fill_pending.log for output."
 
 config_git:
 	eval `ssh-agent -s`
