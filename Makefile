@@ -1,4 +1,4 @@
-.PHONY: init_db start stop test_games test_boxscores test_bs_summaries test_track
+.PHONY: init_db start stop test_games test_boxscores test_bs_summaries test_track init_droplet deploy_track_dates deploy_fill_pending config_git venv create_work_pool kill_vs
 
 WORK_POOL := banya-work-pool
 
@@ -34,7 +34,10 @@ init_droplet:
 	pip install -r requirements.txt
 
 deploy_track_dates:
-	/bin/bash -c 'set -a; source .venv/bin/activate; set +a; python3 prefect/deploy.py'
+	/bin/bash -c 'set -a; source .venv/bin/activate; set +a; python3 prefect/track_processed_dates.py'
+
+deploy_fill_pending:
+	/bin/bash -c 'set -a; source .venv/bin/activate; set +a; python3 prefect/fill_pending.py'
 
 config_git:
 	eval `ssh-agent -s`

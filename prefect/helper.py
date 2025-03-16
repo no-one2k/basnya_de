@@ -1,7 +1,9 @@
 import logging
 import os
+import sys
 from datetime import datetime, date
 from datetime import timezone
+from logging import Logger
 from typing import Set
 
 import dataset
@@ -113,3 +115,14 @@ def convert_to_datetime(date_val) -> datetime | None:
     else:
         logger.error(f"Unexpected type for date {date_val}")
         return None
+
+
+def configure_logger(module_name, level=logging.INFO) -> Logger:
+    global logger
+    # Configure logging
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
+    return logging.getLogger(module_name)
