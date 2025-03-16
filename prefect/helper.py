@@ -36,7 +36,12 @@ def db_connection() -> Database:
         "port": db_config_source.get("DB_PORT"),
         "database": db_config_source.get("DB_NAME"),
     }
-    print(DB_CONFIG)
+    safe_config = {
+        "host": DB_CONFIG["host"],
+        "port": DB_CONFIG["port"],
+        "database": DB_CONFIG["database"]
+    }
+    print(safe_config)
     """Context manager for database connection via SSH tunnel."""
     if SSH_CONFIG:
         from sshtunnel import SSHTunnelForwarder
