@@ -63,7 +63,7 @@ def process_pending_dates() -> None:
         if not pending_dates:
             logger.info("No pending dates to process.")
             return
-
+        logger.info(f"pending dates: {pending_dates}")
         for date_val in pending_dates:
             dt_obj = convert_to_datetime(date_val)
             if dt_obj:
