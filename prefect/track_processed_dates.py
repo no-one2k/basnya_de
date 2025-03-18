@@ -3,12 +3,9 @@ from datetime import datetime, timedelta
 
 import dataset
 from dataset import Database
-from prefect import flow
+from prefect import flow, get_run_logger
 
 from helper import db_connection
-from helper import configure_logger
-
-logger = configure_logger(module_name=__name__)
 
 # Name of the table tracking processing status
 PROCESSING_TABLE = "date_processing_status"
@@ -41,6 +38,7 @@ def update_processing_status(db, date_val, status):
     """
     Updates the processing status for a given date.
     """
+    logger = get_run_logger()
     table: dataset.Table = db[PROCESSING_TABLE]
     table.update(
         row={
@@ -71,6 +69,7 @@ def track_dates(last_n_days: int = 3):
       - Retrieves all dates marked as 'pending'.
       - Processes each pending date sequentially.
     """
+    logger = get_run_logger()
     logger.info(f"track_dates: {last_n_days}")
     start_date = datetime.today() - timedelta(days=last_n_days)
     end_date = datetime.today()

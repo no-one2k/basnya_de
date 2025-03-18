@@ -4,14 +4,13 @@ import sys
 from datetime import datetime, date
 from datetime import timezone
 from logging import Logger
-from typing import Set
+from typing import Set, Generator
 
 import dataset
 from dataset import Database, Table
 from contextlib import contextmanager
 from nba_api.stats.endpoints._base import Endpoint
 from prefect.variables import Variable
-from pygments.lexer import default
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -20,16 +19,14 @@ logger = logging.getLogger(__name__)
 KEY_SUSPECTS = ["SEASON_ID", "TEAM_ID", "GAME_ID", "PLAYER_ID"]
 
 
-
-
 SSH_CONFIG = {
 }
 
 
 @contextmanager
-def db_connection() -> Database:
+def db_connection() -> Generator[Database, None, None]:
     db_config_source = Variable.get("db_connection", default=os.environ)
-    DB_CONFIG = {
+    db_config = {
         "username": db_config_source.get("DB_USER"),
         "password": db_config_source.get("DB_PASSWORD"),
         "host": db_config_source.get("DB_HOST"),
@@ -37,9 +34,9 @@ def db_connection() -> Database:
         "database": db_config_source.get("DB_NAME"),
     }
     safe_config = {
-        "host": DB_CONFIG["host"],
-        "port": DB_CONFIG["port"],
-        "database": DB_CONFIG["database"]
+        "host": db_config["host"],
+        "port": db_config["port"],
+        "database": db_config["database"]
     }
     print(safe_config)
     """Context manager for database connection via SSH tunnel."""
@@ -49,16 +46,16 @@ def db_connection() -> Database:
                 (SSH_CONFIG['host'], SSH_CONFIG['port']),
                 ssh_username=SSH_CONFIG['user'],
                 ssh_password=SSH_CONFIG['password'],
-                remote_bind_address=(DB_CONFIG['host'], DB_CONFIG['port'])
+                remote_bind_address=(db_config['host'], db_config['port'])
         ) as tunnel:
-            db_url = f"postgresql://{DB_CONFIG['username']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}:{tunnel.local_bind_port}/{DB_CONFIG['database']}"
+            db_url = f"postgresql://{db_config['username']}:{db_config['password']}@{db_config['host']}:{tunnel.local_bind_port}/{db_config['database']}"
             db = dataset.connect(db_url)
             try:
                 yield db
             finally:
                 db.close()
     else:
-        db_url = f"postgresql://{DB_CONFIG['username']}:{DB_CONFIG['password']}@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}"
+        db_url = f"postgresql://{db_config['username']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['database']}"
         db = dataset.connect(db_url)
         try:
             yield db
@@ -123,7 +120,6 @@ def convert_to_datetime(date_val) -> datetime | None:
 
 
 def configure_logger(module_name, level=logging.INFO) -> Logger:
-    global logger
     # Configure logging
     logging.basicConfig(
         level=level,

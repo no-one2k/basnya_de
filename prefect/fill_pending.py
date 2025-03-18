@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-from prefect import flow
+from prefect import flow, task, get_run_logger
 
 from track_processed_dates import update_processing_status, get_pending_dates
 
 from get_games import fetch_nba_games
 
-from helper import db_connection, convert_to_datetime, configure_logger
+from helper import db_connection, convert_to_datetime
 
 from get_boxscores import fetch_boxscores
 
-logger = configure_logger(module_name=__name__)
-
+@task
 def process_single_date(db, dt_obj):
     """
     Processes NBA game data for a single date:
@@ -19,6 +18,7 @@ def process_single_date(db, dt_obj):
       3. Extracts game IDs (if any) and fetches corresponding boxscores.
       4. Marks the date as 'completed' after processing.
     """
+    logger = get_run_logger()
     logger.info(f"Starting processing for date: {dt_obj.date()}")
     # update_processing_status(db, dt_obj.date(), 'processing')
 
@@ -56,6 +56,7 @@ def process_single_date(db, dt_obj):
 @flow(log_prints=True)
 def process_pending_dates() -> None:
     """Processes all pending dates by fetching games and boxscores."""
+    logger = get_run_logger()
     logger.info("process_pending_dates")
     with db_connection() as db:
         pending_dates = get_pending_dates(db)
