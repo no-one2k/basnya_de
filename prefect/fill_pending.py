@@ -26,7 +26,7 @@ def process_single_date(db, dt_obj):
     date_str = dt_obj.strftime("%m/%d/%Y")
 
     # Fetch NBA games for this single day
-    games_data = fetch_nba_games(db, date_str, date_str)
+    games_data = fetch_nba_games(db, date_str, date_str, logger=logger)
     if games_data:
         logger.info(f"Fetched games data for {date_str}.")
     else:
@@ -65,7 +65,7 @@ def process_pending_dates() -> None:
             return
         logger.info(f"pending dates: {pending_dates}")
         for date_val in pending_dates:
-            dt_obj = convert_to_datetime(date_val)
+            dt_obj = convert_to_datetime(date_val, logger=logger)
             if dt_obj:
                 process_single_date(db, dt_obj)
 

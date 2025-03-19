@@ -12,9 +12,6 @@ from contextlib import contextmanager
 from nba_api.stats.endpoints._base import Endpoint
 from prefect.variables import Variable
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
 
 KEY_SUSPECTS = ["SEASON_ID", "TEAM_ID", "GAME_ID", "PLAYER_ID"]
 
@@ -95,14 +92,14 @@ def upsert_all_data_sets(db: Database, endpoint: Endpoint, **upsert_kwargs):
             _table.upsert_many(records, **upsert_kwargs)
 
 
-def get_distinct_game_ids(db, table_name: str) -> Set[str]:
+def get_distinct_game_ids(db, table_name: str, logger) -> Set[str]:
     try:
         return set(r['GAME_ID'] for r in db[table_name].distinct('GAME_ID'))
     except Exception as e:
         logger.exception(f"Table '{table_name}' not found or error accessing it: {e}")
         return set()
 
-def convert_to_datetime(date_val) -> datetime | None:
+def convert_to_datetime(date_val, logger) -> datetime | None:
     """Converts various date formats to datetime object."""
     if isinstance(date_val, str):
         try:

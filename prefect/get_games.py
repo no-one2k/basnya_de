@@ -7,15 +7,8 @@ from nba_api.stats.endpoints.leaguegamefinder import LeagueGameFinder, LeagueIDN
 
 from helper import log_api_call, upsert_all_data_sets, db_connection
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-logger = logging.getLogger(__name__)
 
-
-def fetch_nba_games(db: Database, start_date: str, end_date: str) -> Optional[Dict]:
+def fetch_nba_games(db: Database, start_date: str, end_date: str, logger) -> Optional[Dict]:
     """Fetch NBA games for the specified date range."""
     try:
         game_finder = LeagueGameFinder(
@@ -32,7 +25,7 @@ def fetch_nba_games(db: Database, start_date: str, end_date: str) -> Optional[Di
         return None
 
 
-def get_games(start_date: str, end_date: str) -> None:
+def get_games(start_date: str, end_date: str, logger) -> None:
     """Main function to fetch and store NBA games."""
     with db_connection() as db:
         if games := fetch_nba_games(db, start_date, end_date):

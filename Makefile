@@ -1,4 +1,4 @@
-.PHONY: init_db start stop test_games test_boxscores test_bs_summaries test_track init_droplet deploy_track_dates deploy_fill_pending config_git venv create_work_pool kill_vs
+.PHONY: init_db start stop test_games test_boxscores test_bs_summaries test_track init_droplet deploy_track_dates deploy_fill_pending config_git venv create_work_pool kill_vs stop_fill_pending stop_track_dates
 
 WORK_POOL := banya-work-pool
 
@@ -57,4 +57,8 @@ kill_vs:
 	ps aux | grep .cursor-server | awk '{print $2}' | xargs kill
 	ps aux | grep .vscode-server | awk '{print $2}' | xargs kill
 
+stop_fill_pending:
+	ps aux | grep "nohup python3 prefect/fill_pending.py" | awk '{print $2}' | xargs kill
 
+stop_track_dates:
+	ps aux | grep "nohup python3 prefect/track_processed_dates.py" | awk '{print $2}' | xargs kill
