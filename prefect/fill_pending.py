@@ -27,9 +27,12 @@ def process_single_date(db, dt_obj):
 
     # Fetch NBA games for this single day
     games_data = fetch_nba_games(db, date_str, date_str, logger=logger)
-    if games_data:
+    if games_data is None:
+        logger.info(f"Error while fetching games data for {date_str}. Quit without updating status.")
+        return
+    elif games_data:  # non-empty dict
         logger.info(f"Fetched games data for {date_str}.")
-    else:
+    else: # empty dict
         logger.info(f"No games data fetched for {date_str}.")
 
     # Extract game IDs from the fetched data if available.

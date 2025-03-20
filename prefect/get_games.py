@@ -18,11 +18,11 @@ def fetch_nba_games(db: Database, start_date: str, end_date: str, logger) -> Opt
         )
         upsert_all_data_sets(db, game_finder)
         log_api_call(db, "LeagueGameFinder", True)
-        return game_finder.get_normalized_dict()
+        return game_finder.get_normalized_dict() or {}  # return empty dict in case of empty game day
     except Exception as e:
         logger.exception(f"Error fetching games: {e}")
         log_api_call(db, "LeagueGameFinder", False, str(e))
-        return None
+        return None # return None in case of error
 
 
 def get_games(start_date: str, end_date: str, logger) -> None:
