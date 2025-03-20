@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from prefect import flow, task, get_run_logger
+from prefect.cache_policies import TASK_SOURCE
 
 from track_processed_dates import update_processing_status, get_pending_dates
 
@@ -10,7 +11,11 @@ from helper import db_connection, convert_to_datetime
 from get_boxscores import fetch_boxscores
 
 @task
-def process_single_date(db, dt_obj):
+def process_single_date(dt_obj):
+    with db_connection() as db:
+        process_single_date_with_db(db=db, dt_obj=dt_obj)
+
+def process_single_date_with_db(db, dt_obj):
     """
     Processes NBA game data for a single date:
       1. Marks the date as 'processing'.
@@ -63,14 +68,14 @@ def process_pending_dates() -> None:
     logger.info("process_pending_dates")
     with db_connection() as db:
         pending_dates = get_pending_dates(db)
-        if not pending_dates:
-            logger.info("No pending dates to process.")
-            return
-        logger.info(f"pending dates: {pending_dates}")
-        for date_val in pending_dates:
-            dt_obj = convert_to_datetime(date_val, logger=logger)
-            if dt_obj:
-                process_single_date(db, dt_obj)
+    if not pending_dates:
+        logger.info("No pending dates to process.")
+        return
+    logger.info(f"pending dates: {pending_dates}")
+    for date_val in pending_dates:
+        dt_obj = convert_to_datetime(date_val, logger=logger)
+        if dt_obj:
+            process_single_date(dt_obj)
 
 
 if __name__ == "__main__":
