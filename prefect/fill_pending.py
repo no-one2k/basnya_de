@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from prefect import flow, task, get_run_logger
-from prefect.cache_policies import TASK_SOURCE
+from prefect.variables import Variable
 
 from track_processed_dates import update_processing_status, get_pending_dates
 
@@ -11,11 +11,12 @@ from helper import db_connection, convert_to_datetime
 from get_boxscores import fetch_boxscores
 
 @task
-def process_single_date(dt_obj):
+def process_single_date(dt_obj, proxy=None):
+    logger = get_run_logger()
     with db_connection() as db:
-        process_single_date_with_db(db=db, dt_obj=dt_obj)
+        process_single_date_with_db(db=db, dt_obj=dt_obj, logger=logger, proxy=proxy)
 
-def process_single_date_with_db(db, dt_obj):
+def process_single_date_with_db(db, dt_obj, logger, proxy=None):
     """
     Processes NBA game data for a single date:
       1. Marks the date as 'processing'.
@@ -23,7 +24,6 @@ def process_single_date_with_db(db, dt_obj):
       3. Extracts game IDs (if any) and fetches corresponding boxscores.
       4. Marks the date as 'completed' after processing.
     """
-    logger = get_run_logger()
     logger.info(f"Starting processing for date: {dt_obj.date()}")
     # update_processing_status(db, dt_obj.date(), 'processing')
 
@@ -31,7 +31,7 @@ def process_single_date_with_db(db, dt_obj):
     date_str = dt_obj.strftime("%m/%d/%Y")
 
     # Fetch NBA games for this single day
-    games_data = fetch_nba_games(db, date_str, date_str, logger=logger)
+    games_data = fetch_nba_games(db, date_str, date_str, logger=logger, proxy=proxy)
     if games_data is None:
         logger.info(f"Error while fetching games data for {date_str}. Quit without updating status.")
         return
@@ -51,7 +51,7 @@ def process_single_date_with_db(db, dt_obj):
 
     # If there are any game IDs, fetch boxscores.
     if game_ids:
-        fetch_boxscores(db, game_ids)
+        fetch_boxscores(db, game_ids, logger=logger, proxy=proxy)
         update_processing_status(db, dt_obj.date(), 'processed')
     else:
         update_processing_status(db, dt_obj.date(), 'no_games')
@@ -72,10 +72,13 @@ def process_pending_dates() -> None:
         logger.info("No pending dates to process.")
         return
     logger.info(f"pending dates: {pending_dates}")
+    proxy = Variable.get("proxy_list", default={}).get("proxy")
+    logger.info(f"using proxies: {len(proxy) if proxy else 0}")
+
     for date_val in pending_dates:
         dt_obj = convert_to_datetime(date_val, logger=logger)
         if dt_obj:
-            process_single_date(dt_obj)
+            process_single_date(dt_obj, proxy=proxy)
 
 
 if __name__ == "__main__":

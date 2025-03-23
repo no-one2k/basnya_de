@@ -5,22 +5,16 @@ from nba_api.stats.endpoints.boxscoretraditionalv2 import BoxScoreTraditionalV2
 
 from helper import log_api_call, upsert_all_data_sets, db_connection, get_distinct_game_ids
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-logger = logging.getLogger(__name__)
 
 MAX_BOXSCORES_PER_RUN = 5
 
 
-def fetch_boxscores(db, game_ids: List[str], batch_size: int = 10):
+def fetch_boxscores(db, game_ids: List[str], batch_size: int = 10, logger=None, proxy=None):
     for i in range(0, len(game_ids), batch_size):
         batch = game_ids[i:i + batch_size]
         for game_id in batch:
             try:
-                boxscore = BoxScoreTraditionalV2(game_id=game_id)
+                boxscore = BoxScoreTraditionalV2(game_id=game_id, proxy=proxy)
                 upsert_all_data_sets(db, boxscore)
                 log_api_call(db, "BoxScoreTraditionalV2", True)
                 logger.info(f"Successfully fetched boxscore for game {game_id}")
@@ -28,7 +22,7 @@ def fetch_boxscores(db, game_ids: List[str], batch_size: int = 10):
                 log_api_call(db, "BoxScoreTraditionalV2", False, str(e))
                 logger.error(f"Error fetching boxscore for game {game_id}: {e}")
 
-def get_unfetched_boxscores():
+def get_unfetched_boxscores(logger):
     with db_connection() as db:
         all_game_ids = get_distinct_game_ids(db, 'leaguegamefinder__leaguegamefinderresults')
         existing_boxscore_game_ids = get_distinct_game_ids(db, 'boxscoretraditionalv2__teamstats')
@@ -45,4 +39,4 @@ def get_unfetched_boxscores():
             logger.info("No new boxscores to fetch.")
 
 if __name__ == "__main__":
-    get_unfetched_boxscores()
+    get_unfetched_boxscores(logger=logging.getLogger())
