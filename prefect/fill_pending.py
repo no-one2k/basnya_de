@@ -10,7 +10,7 @@ from helper import db_connection, convert_to_datetime
 
 from get_boxscores import fetch_boxscores
 
-@task
+@task(retries=5)
 def process_single_date(dt_obj, proxy=None):
     logger = get_run_logger()
     with db_connection() as db:
@@ -34,7 +34,7 @@ def process_single_date_with_db(db, dt_obj, logger, proxy=None):
     games_data = fetch_nba_games(db, date_str, date_str, logger=logger, proxy=proxy)
     if games_data is None:
         logger.info(f"Error while fetching games data for {date_str}. Quit without updating status.")
-        return
+        raise ValueError("failed to fetch games")
     elif games_data:  # non-empty dict
         logger.info(f"Fetched games data for {date_str}.")
     else: # empty dict
