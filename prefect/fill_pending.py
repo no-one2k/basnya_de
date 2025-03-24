@@ -6,9 +6,10 @@ from track_processed_dates import update_processing_status, get_pending_dates
 
 from get_games import fetch_nba_games
 
-from helper import db_connection, convert_to_datetime
+from helper import db_connection, convert_to_datetime, upsert_all_data_sets, log_api_call
 
-from get_boxscores import fetch_boxscores
+from get_boxscores import fetch_single_box_score
+
 
 @task(retries=5)
 def process_single_date(dt_obj, proxy=None):
@@ -51,7 +52,11 @@ def process_single_date_with_db(db, dt_obj, logger, proxy=None):
 
     # If there are any game IDs, fetch boxscores.
     if game_ids:
-        fetch_boxscores(db, game_ids, logger=logger, proxy=proxy)
+        for game_id in game_ids:
+            box_score = fetch_single_box_score(game_id=game_id, proxy=proxy)
+            upsert_all_data_sets(db, box_score)
+            log_api_call(db, "BoxScoreTraditionalV2", True)
+            logger.info(f"Successfully fetched boxscore for game {game_id}")
         update_processing_status(db, dt_obj.date(), 'processed')
     else:
         update_processing_status(db, dt_obj.date(), 'no_games')
