@@ -9,7 +9,7 @@ from helper import log_api_call, upsert_all_data_sets, db_connection, get_distin
 
 MAX_BOXSCORES_PER_RUN = 5
 
-@task(retries=10, cache_expiration=timedelta(days=1))
+@task(retries=10, persist_result=True, cache_expiration=timedelta(days=1))
 def fetch_single_box_score(game_id: str, proxy=None):
     return BoxScoreTraditionalV2(game_id=game_id, proxy=proxy)
 

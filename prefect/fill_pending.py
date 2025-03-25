@@ -11,7 +11,7 @@ from helper import db_connection, convert_to_datetime, upsert_all_data_sets, log
 from get_boxscores import fetch_single_box_score
 
 
-@task(retries=5)
+@task(retries=10, persist_result=True)
 def process_single_date(dt_obj, proxy=None):
     logger = get_run_logger()
     with db_connection() as db:
