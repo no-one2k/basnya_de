@@ -72,7 +72,7 @@ def track_dates(last_n_days: int = 3):
     logger = get_run_logger()
     logger.info(f"track_dates: {last_n_days}")
     start_date = datetime.today() - timedelta(days=last_n_days)
-    end_date = datetime.today()
+    end_date = datetime.today() - timedelta(days=last_n_days)
 
     with db_connection() as db:
         populate_pending_dates(db, start=start_date, end=end_date)
