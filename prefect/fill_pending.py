@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
+from datetime import timedelta
+from typing import Optional, Dict
+
+from dataset import Database
+from nba_api.stats.endpoints import BoxScoreTraditionalV2
 from prefect import flow, task, get_run_logger
 from prefect.variables import Variable
+from prefect.cache_policies import TASK_SOURCE, INPUTS
 
 from track_processed_dates import update_processing_status, get_pending_dates
 
@@ -8,16 +14,22 @@ from get_games import fetch_nba_games
 
 from helper import db_connection, convert_to_datetime, upsert_all_data_sets, log_api_call
 
-from get_boxscores import fetch_single_box_score
 
+@task(
+    retries=10,
+    persist_result=True,
+    cache_expiration=timedelta(days=1),
+    cache_policy=TASK_SOURCE+INPUTS - 'proxy'
+)
+def fetch_single_box_score(game_id: str, proxy=None):
+    return BoxScoreTraditionalV2(game_id=game_id, proxy=proxy)
 
-@task(retries=10, persist_result=True)
-def process_single_date(dt_obj, proxy=None):
-    logger = get_run_logger()
-    with db_connection() as db:
-        process_single_date_with_db(db=db, dt_obj=dt_obj, logger=logger, proxy=proxy)
+@task(retries=10, persist_result=True, cache_policy=TASK_SOURCE+INPUTS - 'db' - 'logger' - 'proxy')
+def fetch_nba_games_task(db: Database, start_date: str, end_date: str, logger, proxy=None) -> Optional[Dict]:
+    return fetch_nba_games(db=db, start_date=start_date, end_date=end_date, logger=logger, proxy=proxy)
 
-def process_single_date_with_db(db, dt_obj, logger, proxy=None):
+@task(retries=2, persist_result=True, cache_policy=TASK_SOURCE+INPUTS - 'db' - 'logger' - 'proxy')
+def process_single_date(db, dt_obj, logger, proxy=None):
     """
     Processes NBA game data for a single date:
       1. Marks the date as 'processing'.
@@ -32,7 +44,7 @@ def process_single_date_with_db(db, dt_obj, logger, proxy=None):
     date_str = dt_obj.strftime("%m/%d/%Y")
 
     # Fetch NBA games for this single day
-    games_data = fetch_nba_games(db, date_str, date_str, logger=logger, proxy=proxy)
+    games_data = fetch_nba_games_task(db, date_str, date_str, logger=logger, proxy=proxy)
     if games_data is None:
         logger.info(f"Error while fetching games data for {date_str}. Quit without updating status.")
         raise ValueError("failed to fetch games")
@@ -79,11 +91,11 @@ def process_pending_dates() -> None:
     logger.info(f"pending dates: {pending_dates}")
     proxy = Variable.get("proxy_list", default={}).get("proxy")
     logger.info(f"using proxies: {len(proxy) if proxy else 0}")
-
-    for date_val in pending_dates:
-        dt_obj = convert_to_datetime(date_val, logger=logger)
-        if dt_obj:
-            process_single_date(dt_obj, proxy=proxy)
+    with db_connection() as db:
+        for date_val in pending_dates:
+            dt_obj = convert_to_datetime(date_val, logger=logger)
+            if dt_obj:
+                process_single_date(db=db, dt_obj=dt_obj, logger=logger, proxy=proxy)
 
 
 if __name__ == "__main__":

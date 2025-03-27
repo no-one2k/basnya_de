@@ -1,17 +1,12 @@
 import logging
-from datetime import timedelta
 from typing import List
 from nba_api.stats.endpoints.boxscoretraditionalv2 import BoxScoreTraditionalV2
-from prefect import task
 
 from helper import log_api_call, upsert_all_data_sets, db_connection, get_distinct_game_ids
 
 
 MAX_BOXSCORES_PER_RUN = 5
 
-@task(retries=10, persist_result=True, cache_expiration=timedelta(days=1))
-def fetch_single_box_score(game_id: str, proxy=None):
-    return BoxScoreTraditionalV2(game_id=game_id, proxy=proxy)
 
 def fetch_boxscores(db, game_ids: List[str], batch_size: int = 10, logger=None, proxy=None):
     for i in range(0, len(game_ids), batch_size):
