@@ -18,17 +18,24 @@ from helper import db_connection, convert_to_datetime, upsert_all_data_sets, log
 @task(
     retries=10,
     persist_result=True,
-    cache_expiration=timedelta(days=1),
+    cache_expiration=timedelta(days=5),
     cache_policy=TASK_SOURCE+INPUTS - 'proxy'
 )
 def fetch_single_box_score(game_id: str, proxy=None):
-    return BoxScoreTraditionalV2(game_id=game_id, proxy=proxy)
+    result = BoxScoreTraditionalV2(game_id=game_id, proxy=proxy)
+    if not result.get_normalized_dict():
+        raise ValueError(f"empty box score for {game_id}")
+    return result
 
-@task(retries=10, persist_result=True, cache_policy=TASK_SOURCE+INPUTS - 'db' - 'logger' - 'proxy')
+@task(
+    retries=10,
+    persist_result=True,
+    cache_expiration=timedelta(days=5),
+    cache_policy=TASK_SOURCE+INPUTS - 'db' - 'logger' - 'proxy')
 def fetch_nba_games_task(db: Database, start_date: str, end_date: str, logger, proxy=None) -> Optional[Dict]:
     return fetch_nba_games(db=db, start_date=start_date, end_date=end_date, logger=logger, proxy=proxy)
 
-@task(retries=2, persist_result=True, cache_policy=TASK_SOURCE+INPUTS - 'db' - 'logger' - 'proxy')
+@task(retries=2)
 def process_single_date(db, dt_obj, logger, proxy=None):
     """
     Processes NBA game data for a single date:
@@ -64,7 +71,7 @@ def process_single_date(db, dt_obj, logger, proxy=None):
 
     # If there are any game IDs, fetch boxscores.
     if game_ids:
-        for game_id in game_ids:
+        for game_id in set(game_ids):
             box_score = fetch_single_box_score(game_id=game_id, proxy=proxy)
             upsert_all_data_sets(db, box_score)
             log_api_call(db, "BoxScoreTraditionalV2", True)
