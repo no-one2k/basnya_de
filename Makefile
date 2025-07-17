@@ -42,7 +42,7 @@ deploy_fill_pending:
 	@echo "Started fill_pending.py in background. Check fill_pending.log for output."
 
 config_git:
-	eval `ssh-agent -s`
+	eval "$(ssh-agent -s)"
 	ssh-add ../.ssh/id_ed25519_github_droplet
 	git config --global user.name "no-one2k"
 	git config --global user.email no-one2k@yandex.ru
