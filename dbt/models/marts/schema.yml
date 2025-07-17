@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: game_loading_status
+    description: Table showing game loading status including boxscore availability and number of load attempts
+    columns:
+      - name: game_id
+        description: Unique identifier for the game
+        tests:
+          - unique
+          - not_null
+      - name: game_date
+        description: Date when the game was played
+      - name: has_boxscore
+        description: Boolean indicating if boxscore data exists
+      - name: load_attempts
+        description: Number of attempts to load this data
+      - name: boxscore_loaded_at
+        description: Timestamp of when boxscore was last loaded
+      - name: last_processed_check
+        description: Last time the processing status was checked

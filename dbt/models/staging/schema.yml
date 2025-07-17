@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: nba_source
+    schema: public
+    tables:
+      - name: date_processing_status
+      - name: leaguegamefinder__leaguegamefinderresults
+      - name: boxscoretraditionalv2__playerstats
+      - name: boxscoretraditionalv2__teamstarterbenchstats
+      - name: boxscoretraditionalv2__teamstats
