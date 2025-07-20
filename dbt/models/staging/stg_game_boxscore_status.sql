@@ -15,6 +15,17 @@ WITH boxscore_presence AS (
     {% if is_incremental() %}
     WHERE updated_at >= (SELECT MAX(updated_at) FROM {{ this }})
     {% endif %}
+),
+
+game_finder AS (
+    SELECT DISTINCT
+        "GAME_ID" as game_id,
+        DATE("GAME_DATE") as game_date,
+        updated_at
+    FROM {{ source('nba_source', 'leaguegamefinder__leaguegamefinderresults') }}
+    {% if is_incremental() %}
+    WHERE updated_at >= (SELECT MAX(updated_at) FROM {{ this }})
+    {% endif %}
 )
 
 SELECT
@@ -26,7 +37,7 @@ SELECT
     END as has_boxscore,
     COALESCE(dps.retry_count, 0) as retry_count,
     GREATEST(gf.updated_at, bp.updated_at, dps.last_checked) as updated_at
-FROM {{ ref('stg_gamefinder') }} gf
+FROM game_finder gf
 LEFT JOIN boxscore_presence bp
     ON gf.game_id = bp.game_id
 LEFT JOIN {{ source('nba_source', 'date_processing_status') }} dps
