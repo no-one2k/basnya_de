@@ -9,3 +9,4 @@ sources:
       - name: boxscoretraditionalv2__playerstats
       - name: boxscoretraditionalv2__teamstarterbenchstats
       - name: boxscoretraditionalv2__teamstats
+      - name: api_call_logs
