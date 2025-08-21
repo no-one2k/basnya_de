@@ -154,4 +154,36 @@ CREATE TABLE IF NOT EXISTS public.leaguegamefinder__leaguegamefinderresults
     updated_at timestamp without time zone,
     CONSTRAINT leaguegamefinder__leaguegamefinderresults_pkey PRIMARY KEY (id)
 );
+
+-- DBT tables
+CREATE TABLE IF NOT EXISTS dbt_basnya.stg_api_call_logs
+(
+    id integer NOT NULL,
+    endpoint text COLLATE pg_catalog."default",
+    call_time timestamp without time zone,
+    call_date date,
+    success boolean,
+    error_message text COLLATE pg_catalog."default",
+    updated_at timestamp without time zone,
+    CONSTRAINT stg_api_call_logs_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS dbt_basnya.stg_daily_game_summary
+(
+    game_date date NOT NULL,
+    games_count bigint,
+    boxscores_count bigint,
+    updated_at timestamp without time zone,
+    CONSTRAINT stg_daily_game_summary_pkey PRIMARY KEY (game_date)
+);
+
+CREATE TABLE IF NOT EXISTS dbt_basnya.stg_game_boxscore_status
+(
+    game_date date NOT NULL,
+    game_id text COLLATE pg_catalog."default" NOT NULL,
+    has_boxscore boolean,
+    retry_count integer,
+    updated_at timestamp without time zone,
+    CONSTRAINT stg_game_boxscore_status_pkey PRIMARY KEY (game_date, game_id)
+);
 END;
