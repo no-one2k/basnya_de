@@ -1,4 +1,4 @@
-.PHONY: init_db start stop test_games test_boxscores test_bs_summaries test_track init_droplet deploy_track_dates deploy_fill_pending config_git venv create_work_pool kill_vs stop_fill_pending stop_track_dates
+.PHONY: init_db start stop test_games test_boxscores test_bs_summaries test_track init_droplet deploy_track_dates deploy_fill_pending config_git venv create_work_pool kill_vs stop_fill_pending stop_track_dates convert_proxies
 
 WORK_POOL := banya-work-pool
 
@@ -62,3 +62,6 @@ stop_fill_pending:
 
 stop_track_dates:
 	ps aux | grep "nohup python3 prefect/track_processed_dates.py" | awk '{print $$2}' | xargs kill
+
+convert_proxies:
+	python3 tools/convert_proxies.py "~/Downloads/Webshare 10 proxies.txt"
