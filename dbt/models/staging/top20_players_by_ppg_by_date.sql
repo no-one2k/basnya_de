@@ -13,40 +13,6 @@ with processed_dates as (
     where status = 'processed'
 ),
 
--- Games with parsed dates and season start year for ordering
-games as (
-    select
-        "GAME_ID"      as game_id,
-        to_date("GAME_DATE", 'YYYY-MM-DD') as game_date,
-        "SEASON_ID"    as season_id,
-        substring("SEASON_ID", 1, 4)::int as season_start_year
-    from {{ source('nba_source', 'leaguegamefinder__leaguegamefinderresults') }}
-),
-
--- Determine current season as of each processed cutoff_date (latest season observed up to that date)
-current_season_by_date as (
-    select
-        pd.cutoff_date,
-        max(g.season_start_year) as season_start_year
-    from processed_dates pd
-    join games g
-      on g.game_date <= pd.cutoff_date
-    group by pd.cutoff_date
-),
-
--- Resolve season_id text for each cutoff_date from the max season_start_year
-season_id_by_date as (
-    select
-        cs.cutoff_date,
-        -- choose the max season_id text among games of that start year to have a stable text value
-        max(g.season_id) as season_id
-    from current_season_by_date cs
-    join games g
-      on g.season_start_year = cs.season_start_year
-     and g.game_date <= cs.cutoff_date
-    group by cs.cutoff_date
-),
-
 -- Player game stats filtered to rows where the player actually played
 player_games as (
     select
@@ -62,23 +28,60 @@ player_games as (
       and pgs."MIN" <> '0:00'
 ),
 
+-- Join player boxscores to game metadata; use this as the authoritative game universe
+player_games_with_meta as (
+    select
+        pg.player_id,
+        pg.player_name,
+        pg.team_id,
+        pg.game_id,
+        lgf."SEASON_ID"    as season_id,
+        substring(lgf."SEASON_ID", 1, 4)::int as season_start_year,
+        to_date(lgf."GAME_DATE", 'YYYY-MM-DD') as game_date,
+        pg.pts
+    from player_games pg
+    join {{ source('nba_source', 'leaguegamefinder__leaguegamefinderresults') }} lgf
+      on lgf."GAME_ID" = pg.game_id
+),
+
+-- Determine current season as of each processed cutoff_date (latest season observed up to that date)
+current_season_by_date as (
+    select
+        pd.cutoff_date,
+        max(pgm.season_start_year) as season_start_year
+    from processed_dates pd
+    join player_games_with_meta pgm
+      on pgm.game_date <= pd.cutoff_date
+    group by pd.cutoff_date
+),
+
+-- Resolve season_id text for each cutoff_date from the max season_start_year
+season_id_by_date as (
+    select
+        cs.cutoff_date,
+        max(pgm.season_id) as season_id
+    from current_season_by_date cs
+    join player_games_with_meta pgm
+      on pgm.season_start_year = cs.season_start_year
+     and pgm.game_date <= cs.cutoff_date
+    group by cs.cutoff_date
+),
+
 -- Scope player games to the relevant season and up to the cutoff_date for each snapshot
 scoped_player_games as (
     select
         sid.cutoff_date,
         sid.season_id,
-        pg.player_id,
-        pg.player_name,
-        pg.team_id,
-        g.game_id,
-        g.game_date,
-        pg.pts
+        pgm.player_id,
+        pgm.player_name,
+        pgm.team_id,
+        pgm.game_id,
+        pgm.game_date,
+        pgm.pts
     from season_id_by_date sid
-    join games g
-      on g.season_id = sid.season_id
-     and g.game_date <= sid.cutoff_date
-    join player_games pg
-      on pg.game_id = g.game_id
+    join player_games_with_meta pgm
+      on pgm.season_id = sid.season_id
+     and pgm.game_date <= sid.cutoff_date
 ),
 
 -- Aggregate per player within the scoped period
@@ -91,7 +94,6 @@ player_aggregates as (
         count(distinct game_id) as games_played,
         avg(pts::numeric) as avg_pts,
         max(game_date) as last_game_date_in_scope,
-        -- pick the latest team_id based on most recent game_date and then deterministic by game_id
         (array_agg(team_id order by game_date desc, game_id desc))[1] as team_id
     from scoped_player_games
     group by 1,2,3
