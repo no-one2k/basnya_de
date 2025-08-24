@@ -10,3 +10,42 @@ sources:
       - name: boxscoretraditionalv2__teamstarterbenchstats
       - name: boxscoretraditionalv2__teamstats
       - name: api_call_logs
+
+models:
+  - name: top20_players_by_ppg_by_date
+    description: "Daily Top-20 players by points per game as of each processed date for the current season. Grain: (cutoff_date, season_id, rank)."
+    columns:
+      - name: cutoff_date
+        description: "Processed date this snapshot represents."
+        tests:
+          - not_null
+      - name: season_id
+        description: "Current season as of cutoff_date (text)."
+        tests:
+          - not_null
+      - name: rank
+        description: "Rank 1–20 within (cutoff_date, season_id)."
+        tests:
+          - not_null
+      - name: player_id
+        description: "Player identifier."
+        tests:
+          - not_null
+      - name: player_name
+        description: "Player display name."
+        tests:
+          - not_null
+      - name: games_played
+        description: "Distinct count of games up to cutoff_date within the season."
+        tests:
+          - not_null
+      - name: avg_pts
+        description: "Average PTS per game up to cutoff_date."
+        tests:
+          - not_null
+    tests:
+      - unique:
+          combination_of_columns:
+            - cutoff_date
+            - season_id
+            - rank
