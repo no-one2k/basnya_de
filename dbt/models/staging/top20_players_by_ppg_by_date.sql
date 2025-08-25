@@ -1,6 +1,7 @@
 {{
     config(
-        materialized='table'
+        materialized='incremental',
+        on_schema_change='fail'
     )
 }}
 
@@ -11,6 +12,10 @@ with processed_dates as (
     select game_date as cutoff_date
     from {{ ref('stg_date_processing_status') }}
     where status = 'processed'
+    and game_date >= '2025-04-01'
+    {% if is_incremental() %}
+      and game_date not in (select distinct cutoff_date from {{ this }})
+    {% endif %}
 ),
 
 -- Player game stats filtered to rows where the player actually played
@@ -42,7 +47,6 @@ player_games_with_meta as (
     join {{ source('nba_source', 'leaguegamefinder__leaguegamefinderresults') }} lgf
       on lgf."GAME_ID" = pg.game_id
 ),
-
 
 -- Scope player games to the relevant season and up to the cutoff_date for each snapshot
 scoped_player_games as (
