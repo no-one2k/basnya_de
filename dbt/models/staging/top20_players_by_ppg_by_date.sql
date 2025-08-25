@@ -36,7 +36,6 @@ player_games_with_meta as (
         pg.team_id,
         pg.game_id,
         lgf."SEASON_ID"    as season_id,
-        substring(lgf."SEASON_ID", 1, 4)::int as season_start_year,
         to_date(lgf."GAME_DATE", 'YYYY-MM-DD') as game_date,
         pg.pts
     from player_games pg
@@ -44,44 +43,21 @@ player_games_with_meta as (
       on lgf."GAME_ID" = pg.game_id
 ),
 
--- Determine current season as of each processed cutoff_date (latest season observed up to that date)
-current_season_by_date as (
-    select
-        pd.cutoff_date,
-        max(pgm.season_start_year) as season_start_year
-    from processed_dates pd
-    join player_games_with_meta pgm
-      on pgm.game_date <= pd.cutoff_date
-    group by pd.cutoff_date
-),
-
--- Resolve season_id text for each cutoff_date from the max season_start_year
-season_id_by_date as (
-    select
-        cs.cutoff_date,
-        max(pgm.season_id) as season_id
-    from current_season_by_date cs
-    join player_games_with_meta pgm
-      on pgm.season_start_year = cs.season_start_year
-     and pgm.game_date <= cs.cutoff_date
-    group by cs.cutoff_date
-),
 
 -- Scope player games to the relevant season and up to the cutoff_date for each snapshot
 scoped_player_games as (
     select
-        sid.cutoff_date,
-        sid.season_id,
+        pd.cutoff_date,
+        pgm.season_id,
         pgm.player_id,
         pgm.player_name,
         pgm.team_id,
         pgm.game_id,
         pgm.game_date,
         pgm.pts
-    from season_id_by_date sid
-    join player_games_with_meta pgm
-      on pgm.season_id = sid.season_id
-     and pgm.game_date <= sid.cutoff_date
+    from player_games_with_meta pgm
+    cross join processed_dates pd
+    where pgm.game_date <= pd.cutoff_date
 ),
 
 -- Aggregate per player within the scoped period
@@ -123,4 +99,5 @@ select
     now() as updated_at
 from ranked
 where rank <= 20
+and games_played > 0
 order by cutoff_date, season_id, rank
