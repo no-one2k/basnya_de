@@ -12,7 +12,7 @@ with processed_dates as (
     select game_date as cutoff_date
     from {{ ref('stg_date_processing_status') }}
     where status = 'processed'
-    and game_date >= '2025-04-01'
+    and game_date >= '2025-03-01'
     {% if is_incremental() %}
       and game_date not in (select distinct cutoff_date from {{ this }})
     {% endif %}
