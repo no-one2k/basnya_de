@@ -33,6 +33,12 @@ player_games as (
       and pgs."MIN" <> '0:00'
 ),
 
+latest_season_game_dates as (
+    select pgs."SEASON_ID", max(pgs."GAME_DATE") as latest_game_date
+    from {{ source('nba_source', 'boxscoretraditionalv2__playerstats') }} pgs
+    group by 1
+),
+
 -- Join player boxscores to game metadata; use this as the authoritative game universe
 player_games_with_meta as (
     select
@@ -42,10 +48,13 @@ player_games_with_meta as (
         pg.game_id,
         lgf."SEASON_ID"    as season_id,
         to_date(lgf."GAME_DATE", 'YYYY-MM-DD') as game_date,
+        to_date(lsgd.latest_game_date, 'YYYY-MM-DD') as latest_season_game_date,
         pg.pts
     from player_games pg
     join {{ source('nba_source', 'leaguegamefinder__leaguegamefinderresults') }} lgf
       on lgf."GAME_ID" = pg.game_id
+    join latest_season_game_dates lsgd
+      on lsgd."SEASON_ID" = lgf."SEASON_ID"
 ),
 
 -- Scope player games to the relevant season and up to the cutoff_date for each snapshot
@@ -62,6 +71,9 @@ scoped_player_games as (
     from player_games_with_meta pgm
     cross join processed_dates pd
     where pgm.game_date <= pd.cutoff_date
+    and ((pd.cutoff_date >= (pgm.latest_season_game_date - interval '10 days'))
+        or (pd.cutoff_date between (pgm.latest_season_game_date - interval '365 days') and (pgm.latest_season_game_date - interval '1 days'))
+        )
 ),
 
 -- Aggregate per player within the scoped period
