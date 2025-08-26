@@ -34,8 +34,8 @@ player_games as (
 ),
 
 latest_season_game_dates as (
-    select pgs."SEASON_ID", max(pgs."GAME_DATE") as latest_game_date
-    from {{ source('nba_source', 'boxscoretraditionalv2__playerstats') }} pgs
+    select lgf."SEASON_ID", max(lgf."GAME_DATE") as latest_game_date
+    from {{ source('nba_source', 'leaguegamefinder__leaguegamefinderresults') }} lgf
     group by 1
 ),
 
