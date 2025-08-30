@@ -119,5 +119,5 @@ select
 from ranked
 where rank <= 20
 and games_played > 0
-and last_fall_game_date_in_scope >= (cutoff_date - interval '{{ recency_window_days }} days')
+and last_game_date_in_scope >= (cutoff_date - interval '{{ recency_window_days }} days')
 order by cutoff_date, season_id, rank
