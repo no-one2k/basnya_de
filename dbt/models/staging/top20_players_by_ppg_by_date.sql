@@ -5,6 +5,9 @@
     )
 }}
 
+{% set recency_window_days = 10 %}
+
+
 -- Daily Top-20 Players by PPG snapshot per processed date
 -- Grain: (cutoff_date, season_id, rank)
 
@@ -12,7 +15,7 @@ with processed_dates as (
     select game_date as cutoff_date
     from {{ ref('stg_date_processing_status') }}
     where status = 'processed'
-    and game_date >= '2025-03-01'
+    and game_date >= '2025-02-01'
     {% if is_incremental() %}
       and game_date not in (select distinct cutoff_date from {{ this }})
     {% endif %}
@@ -71,7 +74,7 @@ scoped_player_games as (
     from player_games_with_meta pgm
     cross join processed_dates pd
     where pgm.game_date <= pd.cutoff_date
-    and ((pd.cutoff_date >= (pgm.latest_season_game_date - interval '10 days'))
+    and ((pd.cutoff_date >= (pgm.latest_season_game_date - interval '{{ recency_window_days }} days'))
         or (pd.cutoff_date between (pgm.latest_season_game_date - interval '365 days') and (pgm.latest_season_game_date - interval '1 days'))
         )
 ),
@@ -116,4 +119,5 @@ select
 from ranked
 where rank <= 20
 and games_played > 0
+and last_fall_game_date_in_scope >= (cutoff_date - interval '{{ recency_window_days }} days')
 order by cutoff_date, season_id, rank
