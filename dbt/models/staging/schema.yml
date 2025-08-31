@@ -49,3 +49,49 @@ models:
             - cutoff_date
             - season_id
             - rank
+  - name: available_seasons
+    description: "Season-level availability and coverage across phases (preseason, regular, all-star, playoffs, play-in, cup final). One row per SEASON_ID."
+    columns:
+      - name: season_id
+        description: "Raw NBA SEASON_ID (e.g., '22023'). Serves as the unique key."
+        tests:
+          - not_null
+          - unique
+      - name: start_year
+        description: "Numeric starting year parsed from SEASON_ID (YYYY)."
+        tests:
+          - not_null
+      - name: season_part
+        description: "Single-character prefix of SEASON_ID indicating the competition phase."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['1','2','3','4','5','6']
+      - name: season_part_name
+        description: "Human-readable name of the competition phase."
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - Preseason
+                - Regular Season
+                - All-Star
+                - Playoffs
+                - Play-In
+                - NBA Cup Final
+      - name: first_game_date
+        description: "Earliest game date observed for this SEASON_ID."
+      - name: last_game_date
+        description: "Latest game date observed for this SEASON_ID."
+      - name: found_games
+        description: "Count of distinct games discovered for this SEASON_ID."
+        tests:
+          - not_null
+      - name: loaded_boxscores
+        description: "Count of distinct games with a loaded boxscore (player stats present)."
+        tests:
+          - not_null
+      - name: latest_update
+        description: "Most recent update timestamp across source game rows and boxscores."
+        tests:
+          - not_null
