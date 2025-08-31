@@ -7,6 +7,8 @@
 
 {% set recency_window_days = 10 %}
 
+{% set start_date = '2025-01-01' %}
+
 
 -- Daily Top-20 Players by PPG snapshot per processed date
 -- Grain: (cutoff_date, season_id, rank)
@@ -15,7 +17,7 @@ with processed_dates as (
     select game_date as cutoff_date
     from {{ ref('stg_date_processing_status') }}
     where status = 'processed'
-    and game_date >= '2025-02-01'
+    and game_date >= '{{ start_date }}'
     {% if is_incremental() %}
       and game_date not in (select distinct cutoff_date from {{ this }})
     {% endif %}
