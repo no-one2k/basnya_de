@@ -119,7 +119,7 @@ select
     games_played::int as games_played,
     avg_pts::numeric as avg_pts,
     last_player_game_date_in_scope::date as last_player_game_date_in_scope,
-    latest_season_game_date::date as latest_season_game_date
+    latest_season_game_date::date as latest_season_game_date,
     now() as updated_at
 from ranked
 where rank <= 20
