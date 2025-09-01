@@ -72,7 +72,7 @@ scoped_player_games as (
         pgm.team_id,
         pgm.game_id,
         pgm.game_date,
-        pgm.pts
+        pgm.pts,
         pgm.latest_season_game_date
     from player_games_with_meta pgm
     cross join processed_dates pd
