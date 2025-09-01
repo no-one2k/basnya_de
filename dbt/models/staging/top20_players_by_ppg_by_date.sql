@@ -92,7 +92,7 @@ player_aggregates as (
         count(distinct game_id) as games_played,
         avg(pts::numeric) as avg_pts,
         max(game_date) as last_player_game_date_in_scope,
-        latest_season_game_date,
+        max(latest_season_game_date) as latest_season_game_date,
         (array_agg(team_id order by game_date desc, game_id desc))[1] as team_id
     from scoped_player_games
     group by 1,2,3
