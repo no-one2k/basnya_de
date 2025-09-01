@@ -7,7 +7,8 @@
 
 {% set recency_window_days = 10 %}
 
-{% set start_date = '2025-01-01' %}
+{% set start_date = '2025-04-01' %}
+{% set max_rank_to_track = 20 %}
 
 
 -- Daily Top-20 Players by PPG snapshot per processed date
@@ -22,7 +23,6 @@ with processed_dates as (
       and game_date not in (select distinct cutoff_date from {{ this }})
     {% endif %}
 ),
-
 -- Player game stats filtered to rows where the player actually played
 player_games as (
     select
@@ -38,12 +38,52 @@ player_games as (
       and pgs."MIN" <> '0:00'
 ),
 
-latest_season_game_dates as (
-    select lgf."SEASON_ID", max(lgf."GAME_DATE") as latest_game_date
+-- Canonicalize one row per GAME_ID from leaguegamefinder
+lgf_ranked as (
+    select
+        lgf."GAME_ID",
+        lgf."SEASON_ID",
+        lgf."GAME_DATE",
+        lgf.updated_at,
+        -- Prefer official competitions (2=Regular, 4=Playoffs, 5=Play-In)
+        case substring(lgf."SEASON_ID"::text from 1 for 1)
+            when '2' then 0
+            when '4' then 0
+            when '5' then 0
+            else 1
+        end as non_official_flag,
+        row_number() over (
+            partition by lgf."GAME_ID"
+            order by
+                -- official first
+                case substring(lgf."SEASON_ID"::text from 1 for 1)
+                    when '2' then 0
+                    when '4' then 0
+                    when '5' then 0
+                    else 1
+                end asc,
+                -- newest metadata next
+                coalesce(lgf.updated_at, timestamp '1970-01-01') desc,
+                -- stable tie-break
+                lgf."SEASON_ID" desc
+        ) as rn
     from {{ source('nba_source', 'leaguegamefinder__leaguegamefinderresults') }} lgf
-    group by 1
+),
+lgf_canonical as (
+    select
+        "GAME_ID",
+        "SEASON_ID",
+        "GAME_DATE",
+        updated_at
+    from lgf_ranked
+    where rn = 1
 ),
 
+latest_season_game_dates as (
+    select lgf."SEASON_ID", max(lgf."GAME_DATE") as latest_game_date
+    from lgf_canonical lgf
+    group by 1
+),
 -- Join player boxscores to game metadata; use this as the authoritative game universe
 player_games_with_meta as (
     select
@@ -56,12 +96,11 @@ player_games_with_meta as (
         to_date(lsgd.latest_game_date, 'YYYY-MM-DD') as latest_season_game_date,
         pg.pts
     from player_games pg
-    join {{ source('nba_source', 'leaguegamefinder__leaguegamefinderresults') }} lgf
+    join lgf_canonical lgf
       on lgf."GAME_ID" = pg.game_id
     join latest_season_game_dates lsgd
       on lsgd."SEASON_ID" = lgf."SEASON_ID"
 ),
-
 -- Scope player games to the relevant season and up to the cutoff_date for each snapshot
 scoped_player_games as (
     select
@@ -122,7 +161,7 @@ select
     latest_season_game_date::date as latest_season_game_date,
     now() as updated_at
 from ranked
-where rank <= 20
+where rank <= {{ max_rank_to_track }}
 and games_played > 0
 and latest_season_game_date >= (cutoff_date - interval '{{ recency_window_days }} days')
 order by cutoff_date, season_id, rank
