@@ -23,6 +23,39 @@ with processed_dates as (
       and game_date not in (select distinct cutoff_date from {{ this }})
     {% endif %}
 ),
+-- Canonicalize one row per (GAME_ID, PLAYER_ID) from player boxscores
+pgs_ranked as (
+    select
+        bp.id,
+        bp."GAME_ID",
+        bp."PLAYER_ID",
+        bp."TEAM_ID",
+        bp."PLAYER_NAME",
+        bp."PTS",
+        bp."MIN",
+        bp.updated_at,
+        row_number() over (
+            partition by bp."GAME_ID", bp."PLAYER_ID"
+            order by
+                coalesce(bp.updated_at, timestamp '1970-01-01') desc,
+                bp.id desc
+        ) as rn
+    from {{ source('nba_source', 'boxscoretraditionalv2__playerstats') }} bp
+    where bp."GAME_ID" is not null
+      and bp."PLAYER_ID" is not null
+),
+pgs_canonical as (
+    select
+        "PLAYER_ID",
+        "PLAYER_NAME",
+        "TEAM_ID",
+        "GAME_ID",
+        "PTS",
+        "MIN"
+    from pgs_ranked
+    where rn = 1
+),
+
 -- Player game stats filtered to rows where the player actually played
 player_games as (
     select
@@ -32,7 +65,7 @@ player_games as (
         pgs."GAME_ID"     as game_id,
         pgs."PTS"::numeric as pts,
         pgs."MIN"         as min_str
-    from {{ source('nba_source', 'boxscoretraditionalv2__playerstats') }} pgs
+    from pgs_canonical pgs
     where pgs."PTS" is not null
       and pgs."MIN" is not null
       and pgs."MIN" <> '0:00'
