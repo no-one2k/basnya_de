@@ -56,7 +56,7 @@ def get_pending_dates(db):
     """
     table = db[PROCESSING_TABLE]
     pending = list(table.find(status='pending'))
-    dates = [row['date'] for row in pending]
+    dates = sorted([row['date'] for row in pending], reverse=True)
     return dates
 
 
