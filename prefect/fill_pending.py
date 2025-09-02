@@ -67,7 +67,7 @@ def process_single_date(db, dt_obj, logger, proxy=None):
         for game in games_data["LeagueGameFinderResults"]:
             if "GAME_ID" in game:
                 game_ids.append(game["GAME_ID"])
-    logger.info(f"Found {len(game_ids)} game(s) for {date_str}.")
+    logger.info(f"Found {len(set(game_ids))} game(s) for {date_str}.")
 
     # If there are any game IDs, fetch boxscores.
     if game_ids:
