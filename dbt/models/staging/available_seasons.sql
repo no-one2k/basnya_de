@@ -1,16 +1,14 @@
 {{ config(
-    materialized='incremental',
+    materialized='table',
     unique_key='season_id',
     on_schema_change='sync_all_columns'
 ) }}
 
 with games as (
     select
-        -- raw season_id from NBA API (e.g., '22023')
-        lgf."SEASON_ID"::text as season_id,
-        -- first digit (season_part) and human-friendly name
-        substring(lgf."SEASON_ID" from 1 for 1) as season_part,
-        case substring(lgf."SEASON_ID" from 1 for 1)
+        s.season_id,
+        substring(s.season_id from 1 for 1) as season_part,
+        case substring(s.season_id from 1 for 1)
             when '1' then 'Preseason'
             when '2' then 'Regular Season'
             when '3' then 'All-Star'
@@ -19,16 +17,22 @@ with games as (
             when '6' then 'NBA Cup Final'
             else 'Unknown'
         end as season_part_name,
-        -- numeric start year (YYYY) portion
-        nullif(substring(lgf."SEASON_ID" from 2), '')::int as start_year,
-        lgf."GAME_ID"::text as game_id,
-        -- attempt to cast to date; if already a date-compatible text it will work
-        cast(lgf."GAME_DATE" as date) as game_date,
-        lgf.updated_at
-    from public.leaguegamefinder__leaguegamefinderresults lgf
-    where lgf."SEASON_ID" is not null
+        nullif(substring(s.season_id from 2), '')::int as start_year,
+        s.game_id,
+        min(s.game_date) as game_date,
+        max(s.updated_at) as updated_at
+    from (
+        select
+            lgf."SEASON_ID"::text as season_id,
+            lgf."GAME_ID"::text as game_id,
+            cast(lgf."GAME_DATE" as date) as game_date,
+            lgf.updated_at
+        from public.leaguegamefinder__leaguegamefinderresults lgf
+        where lgf."SEASON_ID" is not null
+          and lgf."GAME_ID" is not null
+    ) s
+    group by s.season_id, s.game_id
 ),
--- boxscores presence by game (use player boxscores as a proxy for a loaded boxscore)
 boxscores as (
     select
         bp."GAME_ID"::text as game_id,
@@ -70,5 +74,25 @@ select
     last_game_date,
     found_games,
     loaded_boxscores,
+    -- expected totals by season part where well-defined; otherwise null
+    case season_part
+        when '1' then found_games -- Preseason: use found games
+        when '2' then 1230       -- Regular Season (typical league-wide total)
+        when '3' then 1          -- All-Star Game
+        when '4' then found_games -- Playoffs: use found games
+        when '5' then 6          -- Play-In (max games)
+        when '6' then 1          -- NBA Cup Final
+        else null
+    end as expected_games,
+    case season_part
+        when '1' then found_games
+        when '2' then 1230
+        when '3' then 1
+        when '4' then found_games
+        when '5' then 6
+        when '6' then 1
+        else null
+    end - found_games as games_to_load,
+    found_games - loaded_boxscores as missing_boxscores,
     latest_update
 from season_rollup
