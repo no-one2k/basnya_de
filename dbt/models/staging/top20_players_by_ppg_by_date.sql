@@ -107,8 +107,19 @@ player_games as (
         -- Derived per-game fields
         (pgs."FGM"::numeric - pgs."FG3M"::numeric) as fg2m,
         (pgs."FGA"::numeric - pgs."FG3A"::numeric) as fg2a,
-        -- Minutes in decimal (e.g., 34:30 -> 34.5)
-        (split_part(pgs."MIN", ':', 1)::numeric + (split_part(pgs."MIN", ':', 2)::numeric / 60)) as minutes_dec,
+        -- Minutes in decimal (e.g., 34:30 -> 34.5); handle "mm:ss", "mm-ss", and numeric minutes
+        case
+            when pgs."MIN" ~ '^\d{1,3}:\d{2}$' then
+                split_part(pgs."MIN", ':', 1)::numeric
+                + (split_part(pgs."MIN", ':', 2)::numeric / 60)
+            when pgs."MIN" ~ '^\d{1,3}-\d{2}$' then
+                split_part(replace(pgs."MIN", '-', ':'), ':', 1)::numeric
+                + (split_part(replace(pgs."MIN", '-', ':'), ':', 2)::numeric / 60)
+            when pgs."MIN" ~ '^\d+(\.\d+)?$' then
+                pgs."MIN"::numeric
+            else
+                null
+        end as minutes_dec,
         -- Double/double-double/triple-double flags per game based on 10+ in PTS, REB, AST, STL, BLK
         (
             ((case when pgs."PTS"::numeric >= 10 then 1 else 0 end)
